@@ -10,7 +10,6 @@ package org.openhab.persistence.autoremote.internal;
 
 import java.util.Map;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.openhab.core.items.Item;
 import org.openhab.core.persistence.PersistenceService;
@@ -18,8 +17,6 @@ import org.openhab.io.net.http.HttpUtil;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import flexjson.JSONSerializer;
 
 /**
  * This is the implementation of the AutoRemote {@link PersistenceService}. To learn
@@ -54,13 +51,9 @@ public class AutoremoteService implements PersistenceService {
     @Override
     public void store(Item item, String alias) {
         if (initialized) {
-            JSONSerializer serializer = new JSONSerializer().transform(new AutoremoteEventTransformer(),
-                    AutoremoteEventBean.class);
-            String serializedBean = serializer.serialize(new AutoremoteEventBean(alias, item.getState().toString()));
-
-            String serviceUrl = url + apiKey;
-            String response = HttpUtil.executeUrl("POST", serviceUrl, IOUtils.toInputStream(serializedBean),
-                    "application/json", 5000);
+            String serviceUrl = url + apiKey + "&message=ohproxy=:=" + item.getState().toString() + "&sender="
+                    + item.getName();
+            String response = HttpUtil.executeUrl("GET", serviceUrl, 5000);
             logger.debug("Stored item '{}' as '{}' in AutoRemote and received response: {} ",
                     new String[] { item.getName(), alias, response });
         }
@@ -88,7 +81,7 @@ public class AutoremoteService implements PersistenceService {
 
             apiKey = (String) config.get("apikey");
             if (StringUtils.isBlank(apiKey)) {
-                logger.warn("The AutoRemote API-Key is missing - please configure it in openhab.cfg");
+                logger.warn("The AutoRemote API-Key is missing - please configure it in autoremote.cfg");
             }
 
             initialized = true;
